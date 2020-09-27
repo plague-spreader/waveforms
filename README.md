@@ -1,6 +1,6 @@
 # waveforms.sh
 
-Usage: ./waveforms.sh &lt;formula&gt;
+Usage: `./waveforms.sh &lt;formula&gt;`
 
 Using ffmpeg (that is a dependency), generate an mp4 file showing the waveform.
 
