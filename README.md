@@ -1,26 +1,31 @@
-# waveforms.sh
+# waveforms
 
-Usage: `./waveforms.sh <formula>`
+Usage: `./waveforms <directory> <total time> <sampling rate>`
 
-Using ffmpeg (that is a dependency), generate an mp4 file showing the waveform.
+This script creates a raw audio file with the specified `<sampling rate>` from the function `f(., ., .)` which must be inside `waveform.py` which must be inside `<directory>`.
+Then it creates a video with that audio file showing the waveform. The video duration will be `<total time>` seconds.
 
-## &lt;formula&gt; syntax
+## What must be inside &lt;directory&gt;/waveform.py 
 
-The syntax of the &lt;formula&gt; is described
-[here](https://ffmpeg.org/ffmpeg-all.html#Expression-Evaluation) and
-[there](https://ffmpeg.org/ffmpeg-all.html#aevalsrc).
+This python file MUST HAVE a function `f` which returns a floating point.
 
-If you have the documentation files for ffmpeg you can see those by typing
-`man ffmpeg` inside a terminal.
+The function `f` MUST HAVE three parameters which are:
 
-Also the comma needs to be separated. If you want to compute the arctangent
-between x and y you SHOULD NOT type `atan2(x,y)` but instead `atan2(x\,y)`.
+- the time variable
+- the sample number (starting from 0)
+- the sampling frequency
+
+You can use these three variables and you can use any sub-function you want, as long you return a floating point.
+
+## Dependencies
+
+- [ffmpeg](https://ffmpeg.org/)
+- [argparse](https://pypi.org/project/argparse/)
+- [pathlib](https://pypi.org/project/pathlib/)
 
 ## Example
 
-In the directory wave001 there is an example. Maybe in the future I will
-commit some more, or maybe not. It depends on my will to improve this project.
+In the directory wave001 there is an example.
+The example creates the waveform associated to the function `math.sin(t*((int(n**1.01)<<3)^(int(n**0.99)>>5))/s*2)` which is
 
-Also I'd like to extend (I have to figure out how) the syntax so you can define
-your own function (for example there are the functions `bitand(,)` and
-`bitor(,)` but there is not `bitnot()` nor `bitxor(,)`)
+Æ S T H E T I C
