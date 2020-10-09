@@ -15,11 +15,14 @@ def main(args):
 	with open(pathlib.Path(out_dir).joinpath("audio.raw"), "wb") as f:
 		n, t = 0, 0
 		while t < total_time:
-			to_write = s.pack(waveform.f(t, n, sampling_rate))
+			print("\rCreating audio file ... {:6.2f}%".format(t/total_time*100), end="")
+			to_write = s.pack(waveform.f(t, total_time, n, sampling_rate))
 			f.write(to_write) # see Claude-Shannon sampling theorem
 			f.write(to_write) # see Claude-Shannon sampling theorem
 			n += 1
 			t += dt
+	print("\rCreating audio file ... 100.00%")
+	print("DONE.")
 
 if __name__ == "__main__":
 	ap = argparse.ArgumentParser()
