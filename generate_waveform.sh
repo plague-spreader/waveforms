@@ -1,16 +1,19 @@
 #!/bin/sh
 
-[ $# -eq 0 ] && >&2 echo "Usage: $0 <formula>" && exit 1
+[ $# -lt 3 ] && >&2 echo "Usage $0 <directory> <total time> \
+<sampling frequency>" && exit 1
 
-[ -d wave001 ] && {
-	new=$(printf "wave%03d" $(($(echo wave* | tail -c4)+1)))
-} || new=wave001
+wav_dir=$(realpath $1)
+total_time=$2
+sampling_frequency=$3
+cd $wav_dir
 
-mkdir $new
-cd $new
+../create_video.py $wav_dir $total_time $sampling_frequency
 
-echo $1 > formula.txt
-ffmpeg -f lavfi -i "aevalsrc=$1" -filter_complex "[0:a]showwaves=mode=line:colors=white,format=yuv420p[v]" -map 0:a -map "[v]" out.mp4
+ffmpeg -f f32le -ar $sampling_frequency -i audio.raw \
+-filter_complex "[0:a]showwaves=mode=line:colors=white,format=yuv420p[v]" \
+-map 0:a -map "[v]" -acodec libmp3lame out.mp4
+rm audio.raw
 
 mpv out.mp4
 
@@ -22,7 +25,7 @@ while [ "$invalid_choice" ]; do
 	[ "$choice" = "" -o "$choice" = y -o "$choice" = Y ] && 
 		invalid_choice="" || {
 		[ $choice = n -o $choice = N ] &&
-		{ cd ..; rm -rf $new; invalid_choice=""; } || 
+		{ rm -rf out.mp4; invalid_choice=""; } || 
 			>&2 echo "You have to input either y or n"
 	}
 done

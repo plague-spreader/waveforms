@@ -1,1 +1,0 @@
-sin(440*bitand(t*sin(t*300)\,5*sin(t*350)))
