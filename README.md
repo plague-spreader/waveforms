@@ -1,6 +1,6 @@
 # waveforms
 
-Usage: `./waveforms <directory> <total time> <sampling rate>`
+Usage: `./generate_waveform.sh <directory> <total time> <sampling rate>`
 
 This script creates a raw audio file with the specified `<sampling rate>` from the function `f(., ., .)` which must be inside `waveform.py` which must be inside `<directory>`.
 Then it creates a video with that audio file showing the waveform. The video duration will be `<total time>` seconds.
