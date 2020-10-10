@@ -29,3 +29,5 @@ In the directory wave001 there is an example.
 The example creates the waveform associated to the function `math.sin(t*((int(n**1.01)<<3)^(int(n**0.99)>>5))/s*2)` which is
 
 Æ S T H E T I C
+
+There is a more complex example in wave002
