@@ -13,7 +13,7 @@ cd $wav_dir
 ffmpeg -f f32le -ar $sampling_frequency -i audio.raw \
 -filter_complex "[0:a]showwaves=mode=line:colors=white,format=yuv420p[v]" \
 -map 0:a -map "[v]" out.mp4
-rm audio.raw
+[ $# -eq 4 ] || rm audio.raw
 
 mpv out.mp4
 
