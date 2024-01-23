@@ -10,15 +10,15 @@ def main(args):
 	import waveform
 	total_time = args.total_time
 	sampling_rate = args.sampling_rate
-	dt = 2/sampling_rate # see Claude-Shannon sampling theorem
+	dt = 1/sampling_rate
 	s = struct.Struct("<f")
 	with open(pathlib.Path(out_dir).joinpath("audio.raw"), "wb") as f:
 		n, t = 0, 0
 		while t < total_time:
-			print("\rCreating audio file ... {:6.2f}%".format(t/total_time*100), end="")
+			print("\rCreating audio file ... {:6.2f}%".
+					format(t/total_time*100), end="")
 			to_write = s.pack(waveform.f(t, total_time, n, sampling_rate))
-			f.write(to_write) # see Claude-Shannon sampling theorem
-			f.write(to_write) # see Claude-Shannon sampling theorem
+			f.write(to_write)
 			n += 1
 			t += dt
 	print("\rCreating audio file ... 100.00%")
