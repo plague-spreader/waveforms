@@ -13,14 +13,17 @@ def main(args):
 	dt = 1/sampling_rate
 	s = struct.Struct("<f")
 	with open(pathlib.Path(out_dir).joinpath("audio.raw"), "wb") as f:
-		n, t = 0, 0
-		while t < total_time:
-			print("\rCreating audio file ... {:6.2f}%".
-					format(t/total_time*100), end="")
-			to_write = s.pack(waveform.f(t, total_time, n, sampling_rate))
-			f.write(to_write)
-			n += 1
-			t += dt
+		with open(pathlib.Path(out_dir).joinpath("time_axis"), "wb") as f_t:
+			n, t = 0, 0
+			while t < total_time:
+				print("\rCreating audio file ... {:6.2f}%".
+		  				format(t/total_time*100), end="")
+				to_write = s.pack(waveform.f(t, total_time, n, sampling_rate))
+				t_write = s.pack(t)
+				f_t.write(t_write)
+				f.write(to_write)
+				n += 1
+				t += dt
 	print("\rCreating audio file ... 100.00%")
 	print("DONE.")
 

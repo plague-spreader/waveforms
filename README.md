@@ -1,9 +1,12 @@
 # waveforms
 
-Usage: `./generate_waveform.sh <directory> <total time> <sampling rate>`
+Usage: `./generate_waveform.sh <directory> <total time> <sampling rate> [keep]`
 
 This script creates a raw audio file with the specified `<sampling rate>` from the function `f(., ., .)` which must be inside `waveform.py` which must be inside `<directory>`.
 Then it creates a video with that audio file showing the waveform. The video duration will be `<total time>` seconds.
+
+If a fourth parameter is passed (the `[keep]` parameter) then the time axis and the raw audio data
+is kept for plotting (See `How to plot the raw audio data` subsection)
 
 ## What must be inside &lt;directory&gt;/waveform.py 
 
@@ -17,11 +20,16 @@ The function `f` MUST HAVE three parameters which are:
 
 You can use these three variables and you can use any sub-function you want, as long you return a floating point.
 
+## How to plot the raw audio data
+
+Just go to the waveform directory and run `plot_raw_data.py`
+
 ## Dependencies
 
 - [ffmpeg](https://ffmpeg.org/)
 - [argparse](https://pypi.org/project/argparse/)
 - [pathlib](https://pypi.org/project/pathlib/)
+- [matplotlib](https://pypi.org/project/matplotlib/)
 
 ## Example
 
