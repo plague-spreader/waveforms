@@ -231,6 +231,167 @@ def get_freqs_from_scale__fixed_interval(t, interval, base_note, scale):
     i = int(t // interval) % len(scale)
     return get_freq_from_scale_degree(i, 440.0, scale)
 
+class Player:
+    """
+    Note player
+
+    Attributes
+    ----------
+    press_time : float
+        For how much time is a note pressed?
+    """
+    def __init__(self, instrument, envelope, press_time):
+        """
+        Parameters
+        ----------
+        instrument : Instrument
+            The instrument to play
+        envelope : Envelope
+            The sound envelope
+        press_time : float
+            For how much time is a note pressed?
+        """
+
+        self._instrument = instrument
+        self._envelope = envelope
+        self._press_time = press_time
+
+    def get_sample(self, t, freq, dt):
+        if not self._envelope.pressed:
+            self._envelope.press()
+            self._t = 0
+        self._t += dt
+        if self._t > self._press_time:
+            self._t = 0
+            self._envelope.unpress()
+        return self._instrument.get_sample(t, freq,
+                                           self._envelope.get_amplitude(dt))
+
+class Envelope:
+    """
+    Envelope base class
+    
+    Methods
+    -------
+    get_amplitude(dt)
+        Returns the current amplitude
+    """
+
+    def get_amplitude(self, dt):
+        return NotImplemented
+
+class ADSR(Envelope):
+    """
+    ADSR Envelope class
+
+    Attributes
+    ----------
+    attack : float
+        The attack time
+    decay : float
+        The decay time
+    sustain : float
+        The sustain amplitude
+    release : float
+        The release time
+    pressed : bool
+        Is the note pressed?
+
+    Methods
+    -------
+    press()
+        Strike the note
+
+    unpress()
+        Release the note
+
+    get_amplitude(dt)
+        Get the amplitude value in the current time
+    """
+    ATTACK  = 0
+    DECAY   = 1
+    SUSTAIN = 2
+    RELEASE = 3
+
+    def __init__(self, attack, decay, sustain, release):
+        """
+        Parameters
+        ----------
+        attack : float
+            The attack time
+        decay : float
+            The decay time
+        sustain : float
+            The sustain amplitude
+        release : float
+            The release time
+        """
+
+        self.attack = attack
+        self.decay = decay
+        self.sustain = sustain
+        self.release = release
+        self.pressed = False
+        self._status = None
+
+    def press(self):
+        """Simulate a note press"""
+
+        self._status = ADSR.ATTACK
+        self._t = 0
+        self._cur_vol = 0
+        self.pressed = True
+
+    def unpress(self):
+        """Simulate a note release"""
+        self.pressed = False
+
+    def get_amplitude(self, dt):
+        """Get the amplitude value at the current time
+
+        Parameters
+        ----------
+        dt : float
+            1/fs, i.e. the time between two consecutive samples
+
+        Returns
+        -------
+        float
+            The current amplitude value
+        """
+
+        if self._status == None:
+            return 0
+        elif self._status == ADSR.ATTACK:
+            ret = self._t/self.attack
+            if self._t > self.attack:
+                self._t = 0
+                self._status = ADSR.DECAY
+                return 1
+        elif self._status == ADSR.DECAY:
+            ret = 1 - (1 - self.sustain)*self._t/self.decay
+            if self._t > self.decay:
+                self._t = 0
+                self._status = ADSR.SUSTAIN
+                return self.sustain
+        elif self._status == ADSR.SUSTAIN:
+            if self.pressed:
+                return self.sustain
+            else:
+                self._status = ADSR.RELEASE
+                self._t = 0
+                return self.sustain
+        elif self._status == ADSR.RELEASE:
+            ret = self.sustain * (1 - self._t/self.release)
+            if self._t > self.release:
+                self._t = 0
+                self._status = None
+                return 0
+        else:
+            raise ValueError(f"Unexpected status value {self._status}")
+        self._t += dt
+        return ret
+
 class Sampler:
     """
     Base class which exposes a get_sample(t) method
@@ -241,7 +402,7 @@ class Sampler:
         Returns the sample to play
     """
 
-    def get_sample(self, t, f, volume):
+    def get_sample(self, t, f):
         """Returns the sample to play
 
         Parameters
@@ -250,8 +411,6 @@ class Sampler:
             The time
         f : float
             The frequency to which play this sample
-        volume : float
-            The volume at which play this sample
         """
         return NotImplemented
 
@@ -259,16 +418,11 @@ class Instrument(Sampler):
     """
     Instrument which can be used to play notes
 
-    Attributes
-    ----------
-    timbre_freqs : list[float]
-        The timbre frequency samples
-    timbre_amps : list[float]
-        The timbre amplitude samples
+    An instrument is defined by its timbre and by 
 
     Methods
     -------
-    get_sample(t, f, volume)
+    get_sample(t, f)
         Returns the sample to play
     """
 
@@ -306,8 +460,6 @@ class Note:
 
     Attributes
     ----------
-    time : float
-        The time at which the note needs to be played
     pitch : float
         The frequency of the note
     duration : float
@@ -381,33 +533,39 @@ class Note:
 
         return 440 * 2**(octave_shift + semitone_shift/12 + cent_shift/1200)
 
-    def __init__(self, time, pitch, duration):
+    def __init__(self, pitch, duration):
         """
         Parameters
         ----------
-        time : float
-            The time at which the note needs to be played
         pitch : float or string
             The pitch of the note. Can be represented as string (e.g. A#4)
         duration : float
             The note duration
         """
-        self.time = time
         self.pitch = \
                 Note.note_str2freq(pitch) if isinstance(pitch, str) else pitch
         self.duration = duration
 
 class Score:
     """
-    Base class which exposes a get_note(t) method
+    Base class which exposes a get_note(dt) method
+
+    All classes subclassing this are required to keep track of the duration of
+    the note and everytime get_note is called this duration will decrement
+    acccordingly
 
     Methods
     -------
-    get_note(t)
-        Returns the note to be played at time t
+    get_note(dt)
+        Returns the note to be played
     """
 
-    def get_note(self, t):
+    def get_note(self, dt):
+        """Returns the note to be played
+
+        dt : float
+            1/fs i.e. the time between two samples
+        """
         return NotImplemented
 
 class PresetScore(Score):
@@ -416,15 +574,55 @@ class PresetScore(Score):
 
     Attributes
     ----------
-    score : list[Note]
-        The list of notes to play
+    score_end : bool
+        Has the score ended?
 
     Methods
     -------
-    get_note(t)
-        Returns the note to be played at time t
+    get_note(dt)
+        Returns the note to be played
     """
-    pass
+
+    def __init__(self, notes):
+        """
+        Parameters
+        ----------
+        notes : list[Note]
+            The list of notes to play
+        """
+
+        self.score_end = False
+        self._durations = []
+        self._frequencies = []
+        self._residual_duration = -1
+        for note in notes:
+            self._durations.append(note.duration)
+            self._frequencies.append(note.pitch)
+
+    def get_note(self, dt):
+        """Returns the note to be played
+
+        Parameters
+        ----------
+        dt : float
+            1/fs, i.e. the time between two consecutive samples
+
+        Returns
+        -------
+        float
+            The frequency of the note to be played
+        """
+        try:
+            if self._residual_duration < 0:
+                self._current_note = self._frequencies.pop(0)
+                self._residual_duration = self._durations.pop(0)
+        except IndexError:
+            # score ended, return silence
+            self.score_end = True
+            return 0
+        self.score_end = False
+        self._residual_duration -= dt
+        return self._current_note
 
 class ScaleRandomPlayer(Score):
     """
@@ -432,19 +630,17 @@ class ScaleRandomPlayer(Score):
 
     Methods
     -------
-    get_note(t)
-        Returns the note (frequency) to play at time t
+    get_note(dt)
+        Returns the note (frequency) to play
     """
 
-    def __init__(self, dt, scale, base_note,
+    def __init__(self, scale, base_note,
                  seed = None,
                  min_note_duration = 0.04,
                  max_note_duration = 2):
         """
         Parameters
         ----------
-        dt : float
-            1/fs i.e. the time between two samples
         seed : anything
             The seed to use to initialize the inner random number generator
         base_note : float or callable
@@ -459,7 +655,6 @@ class ScaleRandomPlayer(Score):
         """
 
         self.rnd = random.Random(seed)
-        self.dt = dt
         self.scale = scale
         self.base_note = base_note
         self.min_note_duration = min_note_duration
@@ -473,13 +668,13 @@ class ScaleRandomPlayer(Score):
             return var()
         return var
 
-    def get_note(self, t):
-        """Returns the note to be played at time t
+    def get_note(self, dt):
+        """Returns the note to be played
 
         Parameters
         ----------
-        t : float
-            The time
+        dt : float
+            1/fs i.e. the time between two samples
 
         Returns
         -------
@@ -497,6 +692,6 @@ class ScaleRandomPlayer(Score):
                                                   max_note_duration)
             self.note_freq = get_freq_from_interval(base_note,
                                 self.rnd.choice(self.scale))
-        self.note_duration -= self.dt
+        self.note_duration -= dt
         return self.note_freq
 
